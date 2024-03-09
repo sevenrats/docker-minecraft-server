@@ -5,6 +5,7 @@ FROM ${BASE_IMAGE}
 
 # hook into docker BuildKit --platform support
 # see https://docs.docker.com/engine/reference/builder/#automatic-platform-args-in-the-global-scope
+RUN apt update && apt -y install dnsutils
 ARG TARGETOS
 ARG TARGETARCH
 ARG TARGETVARIANT
@@ -66,6 +67,7 @@ STOPSIGNAL SIGTERM
 ENV TYPE=VANILLA VERSION=LATEST EULA="" UID=1000 GID=1000
 
 COPY --chmod=755 scripts/start* /
+COPY --chmod=755 scripts/start-dns-utils/ /start-dns-utils/
 COPY --chmod=755 bin/ /usr/local/bin/
 COPY --chmod=755 bin/mc-health /health.sh
 COPY --chmod=644 files/* /image/

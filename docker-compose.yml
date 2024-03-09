@@ -1,16 +1,32 @@
 version: "3.8"
-
 services:
   mc:
-    image: itzg/minecraft-server
-    environment:
-      EULA: "true"
-    ports:
-      - "25565:25565"
-    volumes:
-      - data:/data
-    stdin_open: true
+    image: sevenrats/minecraft
+    container_name: mc
     tty: true
+    stdin_open: true
+    environment:
+      TYPE: "PAPER"
+      EULA: "TRUE"
+      MC_PORT: "/port.dat" # declare the port or a path to the port file
+      MC_IP: "/ip.dat" # declare the ip or a path to the ip file
+      MC_DOMAIN: "/domain.dat"
+      DNS_PROVIDER: "cloudflare"
+      CF_API_TOKEN: "/token.dat"
+      SPIGET_RESOURCES: 34315,3836,82861
+      #MEMORY: 28G
+    volumes:
+      - ./config/minecraft/data:/data
+      - ./config/minecraft/data:/data
+      - ./config/minecraft/domain.dat:/domain.dat
+      - ./config/minecraft/token.dat:/token.dat
+      - ./config/vpn/data/ip.dat:/ip.dat
+      - ./config/vpn/data/port.dat:/port.dat
     restart: unless-stopped
-volumes:
-  data: {}
+networks:
+  service:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+          gateway: 172.20.0.1

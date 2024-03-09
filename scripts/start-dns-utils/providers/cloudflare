@@ -1,0 +1,79 @@
+cf_get_zone() {
+    domain_candidate=${1}
+    zone="null"
+    while [[ "$domain_candidate" == *"."* ]]; do
+        zone=$(curl -sX GET "https://api.cloudflare.com/client/v4/zones?name=${domain_candidate}" \
+            -H "Authorization: Bearer ${2}" \
+            -H "Content-Type: application/json" | jq '.result[0].id')
+        if [ "$zone" != "null" ]; then
+            echo "${zone//\"}"
+            return 0
+        else
+            domain_candidate="${domain_candidate#*.}"
+            sleep .25
+        fi
+    done
+    return 1
+}
+
+cf_get_records() {
+    records=$(curl -sX GET "https://api.cloudflare.com/client/v4/zones/${1}/dns_records" \
+            -H "Authorization: Bearer ${2}" \
+            -H "Content-Type: application/json")
+    echo $records
+}
+
+provider_checks() {
+    # cloudflare requires CF_API_TOKEN
+    if [ -z $CF_API_TOKEN ]; then
+        echo "The cloudflare dns provider requires the CF_API_TOKEN environment variable to be set to a token or a path to a token."
+        return 1
+    fi
+    if [[ "$CF_API_TOKEN" == /* || "$CF_API_TOKEN" == ./* ]]; then
+        CF_API_TOKEN=$(cat $CF_API_TOKEN)
+    fi
+    return 0
+}
+
+update_a() {
+    if [ -z $ZONE_ID ]; then
+        ZONE_ID=$(cf_get_zone $domain $CF_API_TOKEN)
+    fi
+    if [ -z $RECORDS_LIST ]; then
+        RECORDS_LIST=$(cf_get_records $domain $CF_API_TOKEN)
+    fi
+
+    RECORD_ID=$(echo $RECORDS_LIST | jq '.result[] | select(.name == "'$domain'") | .id' | tr -d '"')
+
+    # Make the API request to update the A record
+    BODY='{
+        "type": "A",
+        "name": "'"$domain"'",
+        "content": "'"$ip"'",
+        "ttl": '60',
+        "proxied": 'false'
+        }'
+    curl -X PUT "https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/dns_records/${RECORD_ID}" -H "Authorization: Bearer $CF_API_TOKEN" -H "Content-Type: application/json" --data "$BODY"
+}
+
+update_srv() {
+    # Zone ID
+    if [ -z $ZONE_ID ]; then
+        ZONE_ID=$(cf_get_zone $domain $CF_API_TOKEN)
+    fi
+    if [ -z $RECORDS_LIST ]; then
+        RECORDS_LIST=$(cf_get_records $ZONE_ID $CF_API_TOKEN)
+    fi
+
+    RECORD_ID=$(echo $RECORDS_LIST | jq '.result[] | select(.name == "'_minecraft._tcp.${domain}'") | .id' | tr -d '"')
+
+    # SRV record details
+    SRV_NAME=""  # SRV record name
+    SRV_DATA="0 0 ${port} ${domain}"   # SRV record data
+    SRV_TTL=60                               # TTL (Time to Live) in seconds
+    SRV_PROXIED=false                        # Whether the record is proxied by Cloudflare
+
+    # Make the API request to update the SRV record
+    BODY='{"type": "SRV", "data": {"service": "_minecraft", "proto": "_tcp", "name": "'"$domain"'", "priority": 0, "weight": 0, "port": '"$port"', "target": "'"$domain"'"}}'
+    curl -X PUT "https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/dns_records/${RECORD_ID}" -H "Authorization: Bearer $CF_API_TOKEN" -H "Content-Type: application/json" --data "$BODY"
+}

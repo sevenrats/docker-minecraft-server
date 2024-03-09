@@ -1,0 +1,11 @@
+provider_checks() {
+    echo "This is where you might make sure all the necessary vars are available to you"
+}
+
+update_a() {
+    echo "This is where your api client will update an A or AAAA record"
+}
+
+update_srv() {
+    echo "This is where your api client will update an SRV record"
+}

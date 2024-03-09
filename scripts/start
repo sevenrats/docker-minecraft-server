@@ -51,7 +51,8 @@ if ! isTrue "${SKIP_SUDO:-false}" && [ "$(id -u)" = 0 ]; then
   if [[ $distro == alpine ]]; then
     exec su-exec ${runAsUser}:${runAsGroup} "${SCRIPTS:-/}start-configuration" "$@"
   else
-    exec gosu ${runAsUser}:${runAsGroup} "${SCRIPTS:-/}start-configuration" "$@"
+    echo "Starting DNS update..."
+    exec gosu ${runAsUser}:${runAsGroup} "${SCRIPTS:-/}start-dns-update" "$@"
   fi
 else
   exec "${SCRIPTS:-/}start-configuration" "$@"
