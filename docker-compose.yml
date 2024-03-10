@@ -1,27 +1,50 @@
 version: "3.8"
 services:
+  vpn:
+    image: sevenrats/wireguard-client:test
+    container_name: vpn
+    cap_add:
+      - NET_ADMIN
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/New_York
+    volumes:
+      - ./config/vpn/data:/data/vpn
+      - ./config/vpn/connection/:/connection
+    sysctls:
+      - net.ipv4.conf.all.src_valid_mark=1
+      - net.ipv6.conf.all.disable_ipv6=1
+    ports:
+      - 25565:25565 # mc server
+      #- 8888:8888 # OR use proxy http://172.20.0.20:8888
+    networks:
+      service:
+        ipv4_address: 172.20.0.20
+    restart: unless-stopped
   mc:
-    image: sevenrats/minecraft
+    image: sevenrats/minecraft-server
     container_name: mc
+    depends_on:
+      - vpn
+    network_mode: "service:vpn"
     tty: true
     stdin_open: true
     environment:
       TYPE: "PAPER"
       EULA: "TRUE"
-      MC_PORT: "/port.dat" # declare the port or a path to the port file
-      MC_IP: "/ip.dat" # declare the ip or a path to the ip file
-      MC_DOMAIN: "/domain.dat"
+      MC_PORT: "/connection/port.dat" # declare the port or a path to the port file
+      MC_IP: "/connection/ip.dat" # declare the ip or a path to the ip file
+      MC_DOMAIN: /domain/domain.dat
       DNS_PROVIDER: "cloudflare"
-      CF_API_TOKEN: "/token.dat"
+      CF_API_TOKEN: "/domain/token.dat"
       SPIGET_RESOURCES: 34315,3836,82861
-      #MEMORY: 28G
     volumes:
       - ./config/minecraft/data:/data
-      - ./config/minecraft/data:/data
-      - ./config/minecraft/domain.dat:/domain.dat
-      - ./config/minecraft/token.dat:/token.dat
-      - ./config/vpn/data/ip.dat:/ip.dat
-      - ./config/vpn/data/port.dat:/port.dat
+      - ./config/minecraft/domain:/domain
+      - ./config/vpn/connection/:/connection
     restart: unless-stopped
 networks:
   service:

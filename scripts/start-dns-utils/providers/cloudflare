@@ -36,7 +36,7 @@ provider_checks() {
 }
 
 update_a() {
-    if [ -z $ZONE_ID ]; then
+        if [ -z $ZONE_ID ]; then
         ZONE_ID=$(cf_get_zone $domain $CF_API_TOKEN)
     fi
     if [ -z $RECORDS_LIST ]; then
@@ -58,10 +58,10 @@ update_a() {
 
 update_srv() {
     # Zone ID
-    if [ -z $ZONE_ID ]; then
+    if [ -z "$ZONE_ID" ]; then
         ZONE_ID=$(cf_get_zone $domain $CF_API_TOKEN)
     fi
-    if [ -z $RECORDS_LIST ]; then
+    if [ -z "$RECORDS_LIST" ]; then
         RECORDS_LIST=$(cf_get_records $ZONE_ID $CF_API_TOKEN)
     fi
 

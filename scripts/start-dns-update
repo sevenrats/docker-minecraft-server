@@ -15,18 +15,22 @@ if [ -n "$DNS_PROVIDER" ]; then
         echo "$(ls /start-dns-utils/providers/)"
         exit
     fi
-else
-  echo "ITS NOT WORKING"
 fi
 
 provider_checks
 
 if [ -n $MC_DOMAIN ]; then
-    domain=$MC_DOMAIN
+    if [[ "$MC_DOMAIN" = /* ]]; then
+        domain=$(cat $MC_DOMAIN | tr -d '\n')
+    else
+        domain=$MC_DOMAIN
+    fi
 else
     echo "MC_DOMAIN is not defined. Skipping DNS logic."
     exit
 fi
+
+echo "I HAVE SET DOMAIN TO" $domain
 
 if [ -n $MC_PORT ] && is_valid_int $MC_PORT; then
     port=$MC_PORT
@@ -38,38 +42,43 @@ fi
 
 timeout=60
 start_time=$(date +%s)
-while [ -z port ] || [ -z ip ]; do
+while [ -z $port ] || [ -z $ip ]; do
+    echo "EITHER PORT OR IP ARE UNDEFINED"
     current_time=$(date +%s)
     elapsed=$((current_time - start_time))
     if (( elapsed >= timeout )); then
         echo "Timeout reached."
         break
     fi
-    if [ -z $port ]; then
+    if [ -n $port ]; then
         if [ -f $MC_PORT ]; then
-            port_candidate=$(cat $MC_PORT)
+            port_candidate=$(cat $MC_PORT | tr -d '\n')
             if is_valid_int $port_candidate; then
                 port=$port_candidate
             else
-                echo "The value in the port file is not valid. SRV record generation will fail."
+                echo "The value in the port file is not valid. SRV record generation will fail. Port file says:"
+                echo $port_candidate
                 port="FAILED"
             fi
         fi
     fi
     if [ -z $ip ]; then
         if [ -f $MC_IP ]; then
-            ip_candidate=$(cat $MC_IP)
-            if is_valid_int $ip_candidate; then
+            ip_candidate=$(cat $MC_IP | tr -d '\n')
+            if is_valid_ip $ip_candidate; then
                 ip=$ip_candidate
             else
-                echo "The value in the ip file is not valid. A and AAAA record generation will fail."
+                echo "The value in the ip file is not valid. A and AAAA record generation will fail. ip file says:"
+                echo $ip_candidate
                 ip="FAILED"
             fi
         fi
     fi
     sleep 1
 done
-
+echo "BOTH PORT AND IP ARE DEFINED"
+echo $port
+echo $ip
 read current_ip current_port <<< "$(check_srv_record $MC_DOMAIN)"
 
 if [ "$current_port" != "$port" ] && [ "$port" != "FAILED" ]; then
