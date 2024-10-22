@@ -55,6 +55,7 @@ if ! isTrue "${SKIP_SUDO:-false}" && [ "$(id -u)" = 0 ]; then
     echo "Starting DNS update..."
     exec gosu ${runAsUser}:${runAsGroup} "${SCRIPTS:-/}start-dns-update" "$@"
   fi
+  exec $(getSudoFromDistro) ${runAsUser}:${runAsGroup} "${SCRIPTS:-/}start-configuration" "$@"
 else
   exec "${SCRIPTS:-/}start-configuration" "$@"
 fi
